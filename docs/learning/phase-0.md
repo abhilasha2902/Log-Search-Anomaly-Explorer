@@ -38,6 +38,23 @@ is alive.
 you everything about the patient, but its absence tells you something is badly
 wrong, fast, without a full exam.
 
+## Container healthchecks and `docker compose up -d --wait`
+
+`docker compose up -d` starts a container and returns immediately, but "the
+container is running" is not the same as "Postgres is ready for connections" —
+on a fresh volume Postgres spends a few seconds initialising first. A
+`healthcheck` in `docker-compose.yml` tells Docker how to ask the container
+"are you ready?"; here it runs `pg_isready -U loguser -d logexplorer`, which
+succeeds once the server accepts connections for that user and database.
+Adding `--wait` makes `docker compose up -d --wait` block until the healthcheck
+passes, so the next command (`npm run migrate:up -w apps/api`) doesn't fail
+with "connection refused".
+
+**Analogy:** starting the container is like unlocking a restaurant's front
+door; the healthcheck is waiting until the kitchen says "we're taking orders".
+`--wait` is you standing outside until that happens, instead of walking in and
+getting told to come back.
+
 ## What CI is, and why a service container
 
 CI (Continuous Integration) is a server that automatically runs your checks

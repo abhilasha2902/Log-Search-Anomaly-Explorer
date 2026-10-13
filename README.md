@@ -43,6 +43,18 @@ Tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md). Currently: Phase 0 (setup).
 Filled in as each phase lands. Phase 0 provides a `GET /health` endpoint backed by
 a Dockerized Postgres instance — see `docs/plans/phase-0.md` for exact commands.
 
+Setup (PowerShell, Docker Desktop running):
+
+```powershell
+npm install
+docker compose up -d --wait   # starts Postgres and blocks until its healthcheck passes
+npm run migrate:up -w apps/api
+npm run verify
+```
+
+`--wait` returns only once `pg_isready` reports the database is accepting
+connections, so the migration step never races a still-starting Postgres.
+
 ## License
 
 [MIT](LICENSE)
