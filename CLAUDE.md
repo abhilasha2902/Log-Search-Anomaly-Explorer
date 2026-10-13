@@ -8,7 +8,7 @@ Repo: https://github.com/abhilasha2902/Log-Search-Anomaly-Explorer (remote: orig
 Apps send structured logs to an ingestion API. The system stores them in PostgreSQL, supports a small search syntax (level:error service:api timeout), groups lines into templates (Drain-style), detects anomalies (new templates, rate spikes), finds similar past incidents (pgvector embeddings), fires threshold alerts, and uses a local LLM (Ollama) to write incident summaries grounded in retrieved logs with cited line IDs. A React dashboard shows everything. An eval harness measures the AI parts.
 
 ## Stack
-- Monorepo (npm workspaces): apps/api (Node 20, Express, TS), apps/web (React + Vite + TS), packages/loggen, packages/eval, docs
+- Monorepo (npm workspaces): apps/api (Node 22, Express, TS), apps/web (React + Vite + TS), packages/loggen, packages/eval, docs
 - PostgreSQL 16 + pgvector (Docker image pgvector/pgvector), node-pg-migrate, pg driver
 - Zod, Pino, Vitest + Supertest, fast-check, Playwright (1-2 e2e), autocannon, ESLint + Prettier
 - Embeddings: Transformers.js all-MiniLM-L6-v2 (384 dims). LLM: Ollama (llama3.2:3b or qwen2.5:3b) over local HTTP

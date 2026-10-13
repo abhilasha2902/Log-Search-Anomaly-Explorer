@@ -24,7 +24,7 @@ actual log lines they're based on.
 
 ## Stack
 
-Monorepo (npm workspaces): `apps/api` (Node 20, Express, TypeScript), `apps/web`
+Monorepo (npm workspaces): `apps/api` (Node 22, Express, TypeScript), `apps/web`
 (React + Vite + TypeScript), `packages/loggen`, `packages/eval`, plus `docs/`.
 
 PostgreSQL 16 + pgvector, node-pg-migrate, `pg`. Zod, Pino, Vitest + Supertest,
