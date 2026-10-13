@@ -6,6 +6,7 @@ import { createHealthHandler } from "./health.js";
 import { createAuthRouter } from "./auth/routes.js";
 import { requireAuth } from "./auth/middleware.js";
 import { createProjectsRouter } from "./projects/routes.js";
+import { createIngestRouter } from "./ingest/routes.js";
 
 export function createApp(pool: Pool): Express {
   const app = express();
@@ -15,12 +16,13 @@ export function createApp(pool: Pool): Express {
       credentials: true,
     }),
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
   app.get("/health", createHealthHandler(pool));
   app.use("/auth", createAuthRouter(pool));
   app.use("/projects", createProjectsRouter(pool));
+  app.use("/ingest", createIngestRouter(pool));
 
   app.get("/me", requireAuth, (req, res) => {
     res.status(200).json({ id: req.user?.id });
