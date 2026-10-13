@@ -9,7 +9,12 @@
 
 ## Phase 1 — Ingestion and storage
 
-Not started.
+- [x] 1.1 Migrations
+- [x] 1.2 Auth
+- [x] 1.3 Projects and API keys
+- [x] 1.4 Ingestion endpoint
+- [x] 1.5 packages/loggen
+- [x] 1.6 Integration tests and load test
 
 ## Phase 2 — Search
 

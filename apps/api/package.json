@@ -7,20 +7,35 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate:up": "node-pg-migrate up --envPath ../../.env -m migrations -j js",
+    "migrate:down": "node-pg-migrate down --envPath ../../.env -m migrations -j js",
+    "loadtest": "tsx src/loadtest.ts"
   },
   "dependencies": {
+    "@log-explorer/loggen": "^0.1.0",
+    "argon2": "^0.45.1",
+    "autocannon": "^8.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dotenv": "^18.0.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.13.1",
     "pino": "^9.6.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/autocannon": "^7.12.7",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^6.0.2",
+    "node-pg-migrate": "^9.0.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
