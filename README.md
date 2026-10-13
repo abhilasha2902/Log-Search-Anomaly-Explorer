@@ -36,24 +36,76 @@ Free and open-source only — no paid APIs, no cloud LLMs.
 
 ## Status
 
-Tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md). Currently: Phase 0 (setup).
+Tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md). Currently: Phase 2 (search) complete on branch `phase-2-search`.
 
 ## How to run
 
-Filled in as each phase lands. Phase 0 provides a `GET /health` endpoint backed by
-a Dockerized Postgres instance — see `docs/plans/phase-0.md` for exact commands.
-
-Setup (PowerShell, Docker Desktop running):
+Filled in as each phase lands. Everything below is PowerShell, with Docker Desktop running.
 
 ```powershell
 npm install
-docker compose up -d --wait   # starts Postgres and blocks until its healthcheck passes
+Copy-Item .env.example .env              # first time only; local-only defaults, no real secrets
+docker compose up -d --wait              # Postgres + pgvector; blocks until its healthcheck passes
 npm run migrate:up -w apps/api
-npm run verify
+npm run verify                           # lint + typecheck + tests (needs the database above)
 ```
 
-`--wait` returns only once `pg_isready` reports the database is accepting
-connections, so the migration step never races a still-starting Postgres.
+Start the API (http://localhost:3000) and the web app (http://localhost:5173) in two terminals:
+
+```powershell
+npm run dev -w apps/api
+npm run dev -w apps/web
+```
+
+In development the browser only talks to the Vite server, which forwards `/api/*` to the API.
+That keeps the login cookie same-origin, so no extra cookie or CORS settings are needed.
+
+### Try the explorer with sample data
+
+1. Open http://localhost:5173, create an account, and create a project in the page header.
+2. Create an API key, generate synthetic logs with loggen, and ingest them (PowerShell; use the
+   email and password you registered with):
+
+```powershell
+$cred = @{ email = "you@example.com"; password = "your-password" } | ConvertTo-Json
+Invoke-RestMethod http://localhost:3000/auth/login -Method Post -ContentType application/json -Body $cred -SessionVariable session | Out-Null
+$project = Invoke-RestMethod http://localhost:3000/projects -WebSession $session   # pick your project (use $project[0] if several)
+$key = (Invoke-RestMethod "http://localhost:3000/projects/$($project.id)/api-keys" -Method Post -WebSession $session).key
+
+npx tsx packages/loggen/src/cli.ts --seed 42 --count 5000 --out logs.json --truth truth.json
+$events = Get-Content logs.json -Raw | ConvertFrom-Json
+for ($i = 0; $i -lt $events.Count; $i += 1000) {
+  $batch = $events[$i..([Math]::Min($i + 999, $events.Count - 1))]
+  Invoke-RestMethod http://localhost:3000/ingest -Method Post -Headers @{ "x-api-key" = $key } `
+    -ContentType application/json -Body (ConvertTo-Json -InputObject @($batch) -Depth 5) | Out-Null
+}
+```
+
+   The generated events carry fixed timestamps from 2026-01-01 00:00 to 01:00 UTC, so choose
+   **Custom range** with From `2026-01-01T00:00Z` and To `2026-01-01T01:01Z` (`to` is exclusive).
+   The "Any time" and "Last N" options will not show them, and the chart defaults to the last hour.
+   `logs.json` and `truth.json` are generated files; do not commit them.
+
+### Search syntax
+
+```text
+timeout                      a word (whole words only, case-insensitive)
+"disk full"                  an exact phrase
+-retry                       exclude a word (also -"a phrase")
+level:error  service:api     filters; repeat level: or service: to match either
+from:15m  to:2024-05-01      time bounds: ISO-8601 (UTC) or 30s / 15m / 2h / 7d before now;
+                             from is inclusive, to is exclusive, ranges are capped at 30 days
+```
+
+Example: `level:error service:payments timeout -retry from:1h`.
+
+## Known limitations
+
+- **Search matches whole words only.** It uses Postgres full-text search with the `simple`
+  configuration: no stemming and no substring, partial-word or typo-tolerant matching. `timeo`
+  will not find `timeout`, and `timeout` will not find `timeouts`.
+- Punctuation is treated as a word separator, so `user_id=42` searches for the words `user_id`
+  and `42`.
 
 ## License
 
