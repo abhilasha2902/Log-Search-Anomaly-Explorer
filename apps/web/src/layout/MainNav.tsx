@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const LINKS = [
   { to: "/", label: "Explorer", end: true },
   { to: "/templates", label: "Templates", end: false },
+  { to: "/anomalies", label: "Anomalies", end: false },
 ];
 
 /** Page links that keep the selected project in the URL while moving between pages. */

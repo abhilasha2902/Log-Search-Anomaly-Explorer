@@ -78,6 +78,28 @@ export interface TemplateFilters {
   minutes?: number;
 }
 
+export type AnomalyType = "new_template" | "rate_spike";
+export type Severity = "low" | "medium" | "high";
+
+export interface AnomalyItem {
+  id: string;
+  type: AnomalyType;
+  severity: Severity;
+  /** For a rate spike: standard deviations above normal. Always 1 for a new template. */
+  score: number;
+  detectedAt: string;
+  windowStart: string;
+  windowEnd: string;
+  template: { id: string; service: string; template: string };
+}
+
+export interface AnomalyFilters {
+  type?: AnomalyType;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -163,6 +185,10 @@ export const api = {
   getTemplateEvents: (projectId: string, templateId: string, cursor?: string, limit?: number) =>
     request<LogsPage>(
       `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}/events${toQueryString({ cursor, limit })}`,
+    ),
+  getAnomalies: (projectId: string, filters: AnomalyFilters = {}) =>
+    request<{ items: AnomalyItem[] }>(
+      `/projects/${encodeURIComponent(projectId)}/anomalies${toQueryString({ ...filters })}`,
     ),
   getLogs: (projectId: string, filters: SearchFilters, cursor?: string, limit?: number) =>
     request<LogsPage>(

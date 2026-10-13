@@ -409,3 +409,57 @@ table.results tbody tr:hover {
   max-height: 320px;
   overflow: auto;
 }
+
+.timeline {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.timeline text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.timeline line {
+  stroke: var(--border);
+}
+
+.timeline rect.sev-low {
+  fill: var(--badge-info);
+}
+
+.timeline rect.sev-medium {
+  fill: var(--badge-warn);
+}
+
+.timeline rect.sev-high {
+  fill: var(--badge-error);
+}
+
+.sev-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.sev-badge.sev-low {
+  color: var(--badge-info);
+  background: var(--badge-info-bg);
+}
+
+.sev-badge.sev-medium {
+  color: var(--badge-warn);
+  background: var(--badge-warn-bg);
+}
+
+.sev-badge.sev-high {
+  color: var(--badge-error);
+  background: var(--badge-error-bg);
+}
+
+.nowrap {
+  white-space: nowrap;
+}

@@ -3,6 +3,7 @@ import { LoginPage } from "./auth/LoginPage.tsx";
 import { RegisterPage } from "./auth/RegisterPage.tsx";
 import { RequireAuth } from "./auth/RequireAuth.tsx";
 import { ExplorerPage } from "./explorer/ExplorerPage.tsx";
+import { AnomaliesPage } from "./anomalies/AnomaliesPage.tsx";
 import { TemplatesPage } from "./templates/TemplatesPage.tsx";
 
 export default function App() {
@@ -23,6 +24,14 @@ export default function App() {
         element={
           <RequireAuth>
             <TemplatesPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/anomalies"
+        element={
+          <RequireAuth>
+            <AnomaliesPage />
           </RequireAuth>
         }
       />

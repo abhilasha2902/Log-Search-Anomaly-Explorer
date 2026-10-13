@@ -55,7 +55,9 @@ export function generate(options: GenerateOptions): GenerateResult {
     let overriddenAttrs: Record<string, unknown> | undefined;
 
     if (incident?.cause === "slow_database") {
-      template = TEMPLATES.find((t) => t.id === "db_info_query")!;
+      // Slow queries show up as a flood of "slow query detected" warnings (with long durations),
+      // not just as a change in a number: a message-based detector can only see the former.
+      template = TEMPLATES.find((t) => t.id === "db_warn_slow_query")!;
       overriddenAttrs = { duration_ms: 500 + Math.floor(rng() * 1500) };
     } else if (incident?.cause === "bad_deploy") {
       template = BAD_DEPLOY_TEMPLATE;
