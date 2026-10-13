@@ -3,6 +3,7 @@ import { LoginPage } from "./auth/LoginPage.tsx";
 import { RegisterPage } from "./auth/RegisterPage.tsx";
 import { RequireAuth } from "./auth/RequireAuth.tsx";
 import { ExplorerPage } from "./explorer/ExplorerPage.tsx";
+import { TemplatesPage } from "./templates/TemplatesPage.tsx";
 
 export default function App() {
   return (
@@ -14,6 +15,14 @@ export default function App() {
         element={
           <RequireAuth>
             <ExplorerPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/templates"
+        element={
+          <RequireAuth>
+            <TemplatesPage />
           </RequireAuth>
         }
       />

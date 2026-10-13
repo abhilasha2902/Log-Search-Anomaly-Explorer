@@ -47,6 +47,37 @@ export interface Timeseries {
   buckets: TimeseriesBucket[];
 }
 
+export interface TemplateSample {
+  id: string;
+  ts: string;
+  level: Level;
+  message: string;
+}
+
+export interface TemplateItem {
+  id: string;
+  service: string;
+  template: string;
+  firstSeen: string;
+  lastSeen: string;
+  totalCount: number;
+  /** Events per minute over `window`, oldest first. */
+  sparkline: number[];
+  samples: TemplateSample[];
+}
+
+export interface TemplatesResponse {
+  /** The sparkline window; null when the project has no templates yet. */
+  window: { start: string; end: string; minutes: number } | null;
+  items: TemplateItem[];
+}
+
+export interface TemplateFilters {
+  service?: string;
+  sort?: "count" | "recent";
+  minutes?: number;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -124,6 +155,14 @@ export const api = {
   getTimeseries: (projectId: string, filters: SearchFilters) =>
     request<Timeseries>(
       `/projects/${encodeURIComponent(projectId)}/stats/timeseries${toQueryString({ ...filters })}`,
+    ),
+  getTemplates: (projectId: string, filters: TemplateFilters = {}) =>
+    request<TemplatesResponse>(
+      `/projects/${encodeURIComponent(projectId)}/templates${toQueryString({ ...filters })}`,
+    ),
+  getTemplateEvents: (projectId: string, templateId: string, cursor?: string, limit?: number) =>
+    request<LogsPage>(
+      `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}/events${toQueryString({ cursor, limit })}`,
     ),
   getLogs: (projectId: string, filters: SearchFilters, cursor?: string, limit?: number) =>
     request<LogsPage>(
