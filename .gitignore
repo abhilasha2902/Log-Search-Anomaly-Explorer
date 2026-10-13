@@ -5,3 +5,6 @@ build/
 *.local
 coverage/
 .vite/
+
+# Scratch output from apps/api/src/scripts/explainSearch.ts
+explain-*.txt
