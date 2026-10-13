@@ -46,6 +46,7 @@ word-level `@@` conditions added alongside `phraseto_tsquery`, and measure it be
 the SQL; (2) bound worst cases with a default time range (such as the last 24 hours) when the
 user gives no `from`, which caps how many rows a no-match query can scan; (3) re-measure at
 1,000,000 rows before relying on any of this.
+
 ## Search is whole-word only (Phase 2)
 
 Search uses a `tsvector` built with the `simple` text-search configuration, so it matches
@@ -94,3 +95,80 @@ focus-trap implementation.
 
 Unchanged from Phase 1 (see "Stateless JWT, no revocation list" above): signing out clears the
 cookie, but a stolen JWT stays valid until it expires. The new search endpoints inherit that.
+
+## Drain, not an LLM per line (Phase 3)
+
+Grouping lines into templates uses a small hand-written Drain-style parser, not a language model.
+Ingest handles hundreds of lines per request; Drain is a few in-memory lookups per line (its cost was not timed on its own), needs no model
+download, is deterministic (the same line always lands in the same template, which a property test
+checks) and can be unit-tested with plain strings. An LLM per line would be slow, costly in
+hardware, non-deterministic, and would make ingest depend on a model server being up. CLAUDE.md
+also rules it out ("LLM parsing of every line" is deferred). The LLM's job in this project is to
+explain what the statistics found (Phase 5), not to do the counting.
+
+Known weaknesses of Drain here: the first word of a line decides which branch it goes down, so a
+variable first word (`alice logged in`) makes one template per distinct word until the 100-children
+fan-out limit is hit; and templates generalise only as far as the lines seen so far.
+
+## Statistical detection, not a trained model (Phase 3)
+
+Anomalies come from two rules, a never-seen-before template and a per-template rate EWMA z-score,
+because they are explainable in one sentence each, need no labelled data and every threshold is an
+environment variable. The cost: it only sees changes in _which messages appear and how often_. A
+slow database that logs the same message with a larger `duration_ms` is invisible to it.
+
+**Loggen change to keep the evaluation honest.** The original `slow_database` incident only raised
+`duration_ms` and left every message unchanged, so no message-based detector could ever see it. I
+changed that incident so it emits the existing `slow query detected` warning (still with long
+durations), which is what a slow database looks like in real logs. This makes the evaluation
+meaningful but it also means the "slow database" result describes a scenario I adjusted so that
+this detector could see it. Attribute-based (latency) anomalies are out of scope for Phase 3.
+
+## Template mining runs inside `POST /ingest`
+
+Mining happens in the request so `template_id` and the counts are correct as soon as a row exists
+(no "wait for the worker" in the API or tests). The price is ingest throughput: measured with the
+same load test, the handler went from 68.5 to 23.3 requests/second on this machine (numbers and
+caveats in `docs/performance.md`). Not measured: where the time goes. A likely cause is that the
+load test sends all traffic to one project, so every request updates the same ~13 template rows.
+
+**What I'd do next:** write only the events in the request and let the worker assign templates and
+counts for new rows in batches (fewer, larger updates and no hot rows), then re-run the load test;
+or drop the foreign key on `log_events.template_id` and measure whether the per-row key check is
+the cost.
+
+## Parser state lives in API memory
+
+One Drain tree per (project, service) is kept in the API process and rebuilt from `log_templates`
+after a restart. That is fine for one API process (a project constraint) but would not work with
+several: each would build its own tree and create duplicate templates. Two smaller gaps: memory
+grows with the number of projects (there is no eviction), and a template whose _first_ word had
+been generalised before a restart is rebuilt in the wildcard branch, so one duplicate can appear.
+
+## No unique constraint on templates
+
+A unique index on `(project, service, template text)` would need the text to stay stable, but
+Drain rewrites a template when it generalises. Uniqueness is enforced by the parser plus a
+per-project queue (concurrent requests are tested), not by the database.
+
+## Events and statistics commit together; template rows do not
+
+A request inserts its events and updates `total_count`, `first_seen`/`last_seen`, examples and
+minute counts in one transaction. Template rows themselves are created _before_ that transaction
+so the in-memory parser and the database stay in step; if the transaction then fails, an unused
+template row with a count of 0 remains. Harmless, and cheaper than keeping the parser in step with a
+rollback.
+
+## Severity is derived at read time
+
+`anomalies` stores the score; severity (low/medium/high) is computed when listing. A spike is high
+at z ≥ 10, medium at z ≥ 6; a new template is graded by the level of its first example line.
+These tiers are display heuristics I chose, not calibrated against real incidents. Because the
+tiers are not stored, they can change without a migration.
+
+## Detection reads "data time", and late events are not re-judged
+
+The detector judges the last complete minute of what is in `template_minute_counts`, using `now`
+passed in. Events that arrive late (a timestamp older than the minute the detector already
+judged) change the counts but are never re-evaluated. If the worker is down for ten minutes,
+those minutes are not caught up.
