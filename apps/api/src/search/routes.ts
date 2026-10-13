@@ -7,6 +7,7 @@ import { searchConfig } from "./config.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { queryWithTimeout } from "./db.js";
 import { buildLogsSql } from "./queries.js";
+import { createTimeseriesHandler } from "./timeseries.js";
 import { buildFilters, logsQuerySchema, projectIdSchema } from "./schema.js";
 
 interface LogRow {
@@ -75,6 +76,8 @@ export function createSearchRouter(pool: Pool): Router {
       });
     }),
   );
+
+  router.get("/:id/stats/timeseries", createTimeseriesHandler(pool));
 
   return router;
 }

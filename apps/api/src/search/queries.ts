@@ -27,3 +27,15 @@ export function buildLogsSql(
     `ORDER BY ts DESC, id DESC LIMIT $${params.length}`;
   return { sql, params };
 }
+
+/** Events per minute for the same filters as buildLogsSql (parse them with startParam = 2). */
+export function buildTimeseriesSql(
+  projectId: string,
+  filters: ParsedQuery,
+): { sql: string; params: unknown[] } {
+  const where = ["project_id = $1", ...filters.where];
+  const sql =
+    `SELECT to_char(date_trunc('minute', ts) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS t, ` +
+    `count(*)::int AS count FROM log_events WHERE ${where.join(" AND ")} GROUP BY t ORDER BY t`;
+  return { sql, params: [projectId, ...filters.params] };
+}

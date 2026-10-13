@@ -11,7 +11,9 @@ import { ResultsTable } from "./ResultsTable.tsx";
 import { RowDrawer } from "./RowDrawer.tsx";
 import { SearchBar } from "./SearchBar.tsx";
 import { TimeRange } from "./TimeRange.tsx";
+import { EventsChart } from "./EventsChart.tsx";
 import { useLogs } from "./useLogs.ts";
+import { useTimeseries } from "./useTimeseries.ts";
 
 type FilterKey = "q" | "level" | "service" | "from" | "to";
 type Draft = Record<FilterKey, string>;
@@ -48,6 +50,7 @@ export function ExplorerPage() {
     projects?.find((project) => project.id === projectParam)?.id ?? projects?.[0]?.id ?? null;
 
   const logs = useLogs(selectedId, applied);
+  const series = useTimeseries(selectedId, applied);
 
   const [selected, setSelected] = useState<LogItem | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -131,6 +134,8 @@ export function ExplorerPage() {
               Search
             </button>
           </form>
+
+          <EventsChart data={series.data} loading={series.loading} error={series.error} />
 
           <section aria-label="Results" className="card">
             {logs.error && (

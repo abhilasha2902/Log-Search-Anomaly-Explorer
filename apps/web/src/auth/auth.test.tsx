@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "../api/client.ts";
-import { makeProject, renderApp } from "../test/helpers.tsx";
+import { makeProject, makeTimeseries, renderApp } from "../test/helpers.tsx";
 
 vi.mock("../api/client.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client.ts")>();
@@ -16,6 +16,7 @@ vi.mock("../api/client.ts", async (importOriginal) => {
       listProjects: vi.fn(),
       createProject: vi.fn(),
       getLogs: vi.fn(),
+      getTimeseries: vi.fn(),
     },
   };
 });
@@ -26,6 +27,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(api.listProjects).mockResolvedValue([makeProject("p1", "demo")]);
   vi.mocked(api.getLogs).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(api.getTimeseries).mockResolvedValue(makeTimeseries());
 });
 
 async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>, button: string) {

@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "../api/client.ts";
-import { makeItem, makeProject, renderApp } from "../test/helpers.tsx";
+import { makeItem, makeProject, makeTimeseries, renderApp } from "../test/helpers.tsx";
 
 vi.mock("../api/client.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client.ts")>();
@@ -16,6 +16,7 @@ vi.mock("../api/client.ts", async (importOriginal) => {
       listProjects: vi.fn(),
       createProject: vi.fn(),
       getLogs: vi.fn(),
+      getTimeseries: vi.fn(),
     },
   };
 });
@@ -27,6 +28,7 @@ beforeEach(() => {
   vi.mocked(api.me).mockResolvedValue({ id: "u1" });
   vi.mocked(api.listProjects).mockResolvedValue([makeProject("p1", "demo")]);
   vi.mocked(api.getLogs).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(api.getTimeseries).mockResolvedValue(makeTimeseries());
 });
 
 describe("results", () => {
@@ -247,5 +249,49 @@ describe("detail drawer", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(row).toHaveFocus();
+  });
+});
+
+describe("events chart", () => {
+  it("requests the chart with the same applied filters as the results", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await screen.findByText("No matching log events.");
+    expect(api.getTimeseries).toHaveBeenCalledWith("p1", emptyFilters);
+
+    await user.type(screen.getByLabelText("Search"), "timeout");
+    await user.selectOptions(screen.getByLabelText("Level"), "error");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    await vi.waitFor(() => expect(api.getTimeseries).toHaveBeenCalledTimes(2));
+    expect(api.getTimeseries).toHaveBeenLastCalledWith("p1", {
+      ...emptyFilters,
+      q: "timeout",
+      level: "error",
+    });
+  });
+
+  it("draws the returned buckets", async () => {
+    vi.mocked(api.getTimeseries).mockResolvedValue(
+      makeTimeseries({ buckets: [{ t: "2024-05-01T10:02:00Z", count: 4 }] }),
+    );
+    renderApp("/");
+    expect(
+      await screen.findByRole("img", {
+        name: "Events per minute: 4 events over 5 minutes, busiest minute 4",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains why the chart is missing when the range is too long, without hiding the results", async () => {
+    vi.mocked(api.getTimeseries).mockRejectedValue(
+      new ApiError(422, "the chart supports time ranges of up to 24 hours", null),
+    );
+    vi.mocked(api.getLogs).mockResolvedValue({ items: [makeItem(1)], nextCursor: null });
+    renderApp("/?from=7d");
+    expect(
+      await screen.findByText("the chart supports time ranges of up to 24 hours"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("message 1")).toBeInTheDocument();
   });
 });

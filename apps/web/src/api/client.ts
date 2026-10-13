@@ -35,6 +35,18 @@ export interface SearchFilters {
   to?: string;
 }
 
+export interface TimeseriesBucket {
+  /** Start of the minute, e.g. "2024-05-01T10:03:00Z". Minutes with no events are omitted. */
+  t: string;
+  count: number;
+}
+
+export interface Timeseries {
+  from: string;
+  to: string;
+  buckets: TimeseriesBucket[];
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -109,6 +121,10 @@ export const api = {
   listProjects: () => request<Project[]>("/projects"),
   createProject: (name: string) =>
     request<Project>("/projects", { method: "POST", body: JSON.stringify({ name }) }),
+  getTimeseries: (projectId: string, filters: SearchFilters) =>
+    request<Timeseries>(
+      `/projects/${encodeURIComponent(projectId)}/stats/timeseries${toQueryString({ ...filters })}`,
+    ),
   getLogs: (projectId: string, filters: SearchFilters, cursor?: string, limit?: number) =>
     request<LogsPage>(
       `/projects/${encodeURIComponent(projectId)}/logs${toQueryString({ ...filters, cursor, limit })}`,
