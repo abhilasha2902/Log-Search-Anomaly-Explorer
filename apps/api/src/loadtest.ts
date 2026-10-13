@@ -1,7 +1,7 @@
 import "./env.js";
 import http from "node:http";
 import os from "node:os";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import autocannon from "autocannon";
@@ -72,25 +72,34 @@ async function main() {
   }
 
   const cpu = os.cpus();
-  const doc = [
-    "# Performance",
+  const START = "<!-- loadtest:start -->";
+  const END = "<!-- loadtest:end -->";
+  const section = [
+    START,
+    "## Phase 3 - ingest with template mining (`POST /ingest`)",
     "",
-    "Machine-specific measurement of `POST /ingest`; not a general benchmark.",
-    "API and Postgres (Docker) share this machine with the load generator.",
+    "Same load test as above, re-run after ingestion started grouping lines into templates and",
+    "updating per-template counts in the same request. Machine-specific; not a general benchmark.",
     "",
     `- CPU: ${cpu[0]?.model.trim()} (${cpu.length} logical cores)`,
     `- RAM: ${(os.totalmem() / 1024 ** 3).toFixed(1)} GiB`,
     `- OS: ${os.type()} ${os.release()}, Node ${process.version}`,
     `- Run at: ${new Date().toISOString()}`,
-    "- Command: `npm run loadtest -w apps/api` (10 connections, 10s, 500 events per request)",
+    "- Command: `npm run loadtest -w apps/api` (10 connections, 10s, 500 events per request, one project)",
     "",
     "```",
     summary.trim(),
     "```",
-    "",
+    END,
   ].join("\n");
   const repoRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../../..");
-  writeFileSync(path.join(repoRoot, "docs", "performance.md"), doc);
+  const docPath = path.join(repoRoot, "docs", "performance.md");
+  // Replace only our own section so earlier measurements in the file are never overwritten.
+  let existing = existsSync(docPath) ? readFileSync(docPath, "utf8") : "# Performance\n";
+  existing = existing.includes(START)
+    ? existing.replace(new RegExp(`${START}[\\s\\S]*?${END}`), () => section)
+    : `${existing.trimEnd()}\n\n${section}\n`;
+  if (!process.env.LOADTEST_NO_WRITE) writeFileSync(docPath, existing);
 
   // autocannon stops mid-request; let handlers already past the parser finish their insert.
   await new Promise((resolve) => setTimeout(resolve, 1000));
