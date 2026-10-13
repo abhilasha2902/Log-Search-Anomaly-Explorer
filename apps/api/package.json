@@ -10,7 +10,9 @@
     "test": "vitest run",
     "migrate:up": "node-pg-migrate up --envPath ../../.env -m migrations -j js",
     "migrate:down": "node-pg-migrate down --envPath ../../.env -m migrations -j js",
-    "loadtest": "tsx src/loadtest.ts"
+    "loadtest": "tsx src/loadtest.ts",
+    "worker": "tsx src/worker.ts",
+    "detect:replay": "tsx src/scripts/replayDetector.ts"
   },
   "dependencies": {
     "@log-explorer/loggen": "^0.1.0",

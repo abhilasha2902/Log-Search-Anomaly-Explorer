@@ -28,7 +28,16 @@ Phase 2 is built and verified locally; the branch still needs a PR and green CI.
 
 ## Phase 3 — Template mining and anomaly detection
 
-Not started.
+- [x] 3.1 Migrations (log_templates, template_minute_counts, anomalies, log_events.template_id)
+- [x] 3.2 Drain-style parser (pure TS) with unit and property tests
+- [x] 3.3 Template mining during ingest; ingest load test re-run (docs/performance.md)
+- [x] 3.4 Templates API and React Templates page
+- [x] 3.5 Worker (`npm run worker -w apps/api`) and detector (new templates, EWMA rate spikes)
+- [x] 3.6 Anomalies API and React page; detector checked against loggen ground truth
+
+Phase 3 is built and verified locally; the branch still needs a PR and green CI. Known costs and
+gaps are in docs/design-decisions.md (ingest throughput dropped; slow-database scenario needed a
+loggen change).
 
 ## Phase 4 — Alerts and embeddings
 

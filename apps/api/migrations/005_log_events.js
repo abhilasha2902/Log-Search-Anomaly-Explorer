@@ -14,11 +14,9 @@ export async function up(pgm) {
   pgm.createIndex("log_events", ["project_id", { name: "ts", sort: "DESC" }], {
     name: "idx_log_events_project_ts",
   });
-  pgm.createIndex(
-    "log_events",
-    ["project_id", "service", "level", { name: "ts", sort: "DESC" }],
-    { name: "idx_log_events_project_service_level_ts" },
-  );
+  pgm.createIndex("log_events", ["project_id", "service", "level", { name: "ts", sort: "DESC" }], {
+    name: "idx_log_events_project_service_level_ts",
+  });
   pgm.createIndex("log_events", "attrs", { method: "gin", name: "idx_log_events_attrs_gin" });
 }
 

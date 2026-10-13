@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client.ts";
 import type { LogItem, Project } from "../api/client.ts";
 import { useAuth } from "../auth/useAuth.tsx";
+import { MainNav } from "../layout/MainNav.tsx";
 import { ProjectSwitcher } from "../projects/ProjectSwitcher.tsx";
 import { Filters } from "./Filters.tsx";
 import { LoadMore } from "./LoadMore.tsx";
@@ -90,6 +91,7 @@ export function ExplorerPage() {
     <div className="page">
       <header className="topbar">
         <h1>Log Explorer</h1>
+        <MainNav projectId={selectedId} />
         <div className="topbar-right">
           {projects && (
             <ProjectSwitcher

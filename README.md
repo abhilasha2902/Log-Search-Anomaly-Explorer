@@ -36,7 +36,7 @@ Free and open-source only — no paid APIs, no cloud LLMs.
 
 ## Status
 
-Tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md). Currently: Phase 2 (search) complete on branch `phase-2-search`.
+Tracked in [`docs/PROGRESS.md`](docs/PROGRESS.md). Currently: Phase 3 (template mining and anomaly detection) built on branch `phase-3-templates`.
 
 ## How to run
 
@@ -81,10 +81,34 @@ for ($i = 0; $i -lt $events.Count; $i += 1000) {
 }
 ```
 
-   The generated events carry fixed timestamps from 2026-01-01 00:00 to 01:00 UTC, so choose
-   **Custom range** with From `2026-01-01T00:00Z` and To `2026-01-01T01:01Z` (`to` is exclusive).
-   The "Any time" and "Last N" options will not show them, and the chart defaults to the last hour.
-   `logs.json` and `truth.json` are generated files; do not commit them.
+The generated events carry fixed timestamps from 2026-01-01 00:00 to 01:00 UTC, so choose
+**Custom range** with From `2026-01-01T00:00Z` and To `2026-01-01T01:01Z` (`to` is exclusive).
+The "Any time" and "Last N" options will not show them, and the chart defaults to the last hour.
+`logs.json` and `truth.json` are generated files; do not commit them.
+
+### Templates and anomalies (Phase 3)
+
+Ingestion groups every line into a template (`GET /orders/<*> <*>`) and counts it per minute.
+Templates are on the **Templates** page; anomalies on the **Anomalies** page.
+
+Anomalies are found by a separate worker process. In a third terminal:
+
+```powershell
+npm run worker -w apps/api      # checks every minute (WORKER_INTERVAL_MS); Ctrl+C to stop
+```
+
+The worker only judges the last minute of data, so it will not report anything for the
+2026-01-01 sample data above. To see anomalies for that sample, replay the detector over it
+(use your project id, e.g. `$project[0].id` from the snippet above):
+
+```powershell
+npm run detect:replay -w apps/api -- --project $project[0].id
+```
+
+Detector thresholds are environment variables (see `.env.example`): `RATE_Z_THRESHOLD`,
+`RATE_MIN_COUNT`, `RATE_MIN_HISTORY_MINUTES`, `RATE_EWMA_ALPHA`, `RATE_LOOKBACK_MINUTES`,
+`SPIKE_MERGE_GAP_MINUTES`, `NEW_TEMPLATE_WINDOW_MINUTES`, `SERVICE_WARMUP_MINUTES`,
+`WORKER_INTERVAL_MS`.
 
 ### Search syntax
 
@@ -106,6 +130,15 @@ Example: `level:error service:payments timeout -retry from:1h`.
   will not find `timeout`, and `timeout` will not find `timeouts`.
 - Punctuation is treated as a word separator, so `user_id=42` searches for the words `user_id`
   and `42`.
+
+- **Templates are approximate.** Drain groups by word count and first word; a variable first word
+  (`alice logged in`) makes one template per distinct word. See docs/design-decisions.md.
+- **Ingest is slower with template mining** than before Phase 3 (measured in docs/performance.md),
+  and the template parser lives in the memory of a single API process.
+- **Anomaly detection sees messages and their rates only.** A latency increase that does not change
+  any message is not detected. Late-arriving events and worker downtime are not re-evaluated.
+- The anomaly evaluation uses loggen's synthetic incidents (large and clean); it does not show how the
+  detector behaves on real traffic.
 
 ## License
 
