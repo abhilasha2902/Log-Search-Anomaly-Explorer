@@ -37,6 +37,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Run migrations
+        run: npm run migrate:up -w apps/api
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
