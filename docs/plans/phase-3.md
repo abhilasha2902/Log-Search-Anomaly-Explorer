@@ -22,7 +22,7 @@ Branch: `phase-3-templates`, one commit per step, `npm run verify` before each c
 - **Masking** (before tokenising): UUIDs, IPv4 (+port), `0x…` hex, long hex strings containing a digit,
   then every digit run. A masked token becomes `<*>`. Messages are capped at 2000 characters and 64
   tokens for parsing.
-- **Drain parameters**: depth 4 (token count + first 2 tokens), similarity threshold 0.5, max 100
+- **Drain parameters**: depth 3 (token count + first token), similarity threshold 0.7 (0.5 merged "charge X succeeded" with "charge X retried"), max 100
   children per node; all constructor options so tests can vary them.
 - **Detection runs on data time, not wall-clock**: `detect(pool, projectId, now)` takes `now`, so the
   loggen test replays a run minute by minute. The worker passes `new Date()`.
