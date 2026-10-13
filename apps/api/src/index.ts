@@ -1,1 +1,13 @@
-console.log("api: not implemented yet");
+import "./env.js";
+import pino from "pino";
+import { createApp } from "./app.js";
+import { createPool } from "./db.js";
+
+const logger = pino();
+const port = Number(process.env.PORT ?? 3000);
+const pool = createPool();
+const app = createApp(pool);
+
+app.listen(port, () => {
+  logger.info(`api listening on port ${port}`);
+});

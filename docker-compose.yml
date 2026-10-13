@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: loguser
+      POSTGRES_PASSWORD: logpass
+      POSTGRES_DB: logexplorer
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
