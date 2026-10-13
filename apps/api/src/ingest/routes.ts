@@ -1,5 +1,5 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Pool } from "pg";
 import { createApiKeyAuth } from "./middleware.js";
 import { ingestBatchSchema } from "./schema.js";
@@ -10,7 +10,7 @@ function ingestRateLimiter() {
     limit: Number(process.env.INGEST_RATE_LIMIT_MAX ?? 1000),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.projectId ?? req.ip ?? "unknown",
+    keyGenerator: (req) => req.projectId ?? ipKeyGenerator(req.ip ?? "unknown"),
   });
 }
 
