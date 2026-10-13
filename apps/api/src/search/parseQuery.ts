@@ -1,4 +1,4 @@
-﻿import { parseTime } from "./parseTime.js";
+import { parseTime } from "./parseTime.js";
 import {
   LEVELS,
   MAX_QUERY_LENGTH,

@@ -8,7 +8,7 @@ const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
 });
 
-async function assertOwnedProject(
+export async function assertOwnedProject(
   pool: Pool,
   projectId: string,
   userId: string,
