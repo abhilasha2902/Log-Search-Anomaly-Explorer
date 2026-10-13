@@ -46,3 +46,51 @@ word-level `@@` conditions added alongside `phraseto_tsquery`, and measure it be
 the SQL; (2) bound worst cases with a default time range (such as the last 24 hours) when the
 user gives no `from`, which caps how many rows a no-match query can scan; (3) re-measure at
 1,000,000 rows before relying on any of this.
+## Search is whole-word only (Phase 2)
+
+Search uses a `tsvector` built with the `simple` text-search configuration, so it matches
+whole, lower-cased words: no stemming, no substring, partial-word or typo-tolerant search.
+This keeps behaviour predictable and easy to explain. "What I'd do next": add a `pg_trgm` index
+for substring matching if users need it, accepting a larger index and more to maintain.
+
+## `search_vector` is a stored generated column
+
+Postgres maintains it automatically, so ingestion code does not change. The catch: adding a
+stored generated column rewrites the whole table, which is fine at this size but would lock a
+large production table. "What I'd do next": add the column as nullable, backfill in batches, then
+attach the index.
+
+## 404 for projects you don't own, not 403
+
+A project that is not yours and one that does not exist both return 404, so the API never
+confirms that someone else's project id exists. It matches the Phase 1 API-key routes.
+
+## No total result count on the logs endpoint
+
+`/logs` returns a page and a `nextCursor`, not "N results". An exact count means scanning every
+matching row, which is the cost the cursor avoids. The UI shows how many rows are loaded so far.
+
+## The search state lives in the URL
+
+Query, filters, time range and project are URL search params; React `useState` is used only for
+what has been loaded and which row is open. No state library or data-fetching library was added.
+The trade-off is a little hand-written loading/error handling in two small hooks.
+
+## uPlot for the chart
+
+uPlot is about 50 KB and fast, and one bar chart is all the app needs. The trade-off is an
+imperative canvas API, so it is confined to one wrapper component and replaced by a stub in jsdom
+tests (jsdom has no canvas), which means tests check what is passed to the chart, not pixels.
+The chart does not yet react to the OS switching between light and dark while it is on screen:
+colours are read when it is drawn. "What I'd do next": redraw on `prefers-color-scheme` changes.
+
+## The row drawer is not a full focus trap
+
+The drawer closes with Escape or its button and returns focus to the row; Tab is held on its
+close button, which is the only control inside. A dialog with more controls would need a proper
+focus-trap implementation.
+
+## Logout still does not revoke tokens
+
+Unchanged from Phase 1 (see "Stateless JWT, no revocation list" above): signing out clears the
+cookie, but a stolen JWT stays valid until it expires. The new search endpoints inherit that.
