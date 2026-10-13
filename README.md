@@ -55,6 +55,14 @@ npm run verify
 `--wait` returns only once `pg_isready` reports the database is accepting
 connections, so the migration step never races a still-starting Postgres.
 
+## Known limitations
+
+- **Search matches whole words only.** It uses Postgres full-text search with the `simple`
+  configuration: no stemming and no substring, partial-word or typo-tolerant matching. `timeo`
+  will not find `timeout`, and `timeout` will not find `timeouts`.
+- Punctuation is treated as a word separator, so `user_id=42` searches for the words `user_id`
+  and `42`.
+
 ## License
 
 [MIT](LICENSE)
