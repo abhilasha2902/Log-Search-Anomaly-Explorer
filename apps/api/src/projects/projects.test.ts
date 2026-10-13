@@ -1,6 +1,7 @@
 import "../env.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import type { Pool } from "pg";
 import { createApp } from "../app.js";
 import { createPool } from "../db.js";
 
@@ -108,5 +109,36 @@ describe("projects", () => {
       .delete(`/projects/${projectId}/api-keys/${keyId}`)
       .set("Cookie", cookie);
     expect(secondRevoke.status).toBe(404);
+  });
+});
+
+describe("database failures", () => {
+  it("returns 500 and keeps serving when the database rejects", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    const cookie = await registerAndLogin();
+    const brokenApp = createApp({
+      query: () => Promise.reject(new Error("boom")),
+    } as unknown as Pool);
+    const id = "00000000-0000-0000-0000-000000000000";
+
+    const responses = [
+      await request(brokenApp).post("/projects").set("Cookie", cookie).send({ name: "demo" }),
+      await request(brokenApp).get("/projects").set("Cookie", cookie),
+      await request(brokenApp).post(`/projects/${id}/api-keys`).set("Cookie", cookie),
+      await request(brokenApp).delete(`/projects/${id}/api-keys/${id}`).set("Cookie", cookie),
+    ];
+    for (const response of responses) {
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: "internal" });
+    }
+
+    // The process (and app) must still answer requests after the failures.
+    const after = await request(brokenApp).get("/projects");
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off("unhandledRejection", onUnhandled);
+    expect(after.status).toBe(401);
+    expect(unhandled).toEqual([]);
   });
 });
