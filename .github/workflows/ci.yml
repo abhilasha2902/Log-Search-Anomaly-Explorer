@@ -22,6 +22,14 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgres://loguser:logpass@localhost:5432/logexplorer
+      JWT_SECRET: ci-test-only-secret-not-a-real-credential
+      JWT_EXPIRES_IN: 60m
+      COOKIE_SECURE: "false"
+      CORS_ORIGIN: http://localhost:5173
+      AUTH_RATE_LIMIT_MAX: "10"
+      AUTH_RATE_LIMIT_WINDOW_MS: "60000"
+      INGEST_RATE_LIMIT_MAX: "1000"
+      INGEST_RATE_LIMIT_WINDOW_MS: "60000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
