@@ -1,6 +1,7 @@
 import "../env.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import type { Pool } from "pg";
 import { createApp } from "../app.js";
 import { createPool } from "../db.js";
 
@@ -22,7 +23,9 @@ afterAll(async () => {
 describe("auth flow", () => {
   it("registers a new user", async () => {
     const email = await uniqueEmail();
-    const response = await request(app).post("/auth/register").send({ email, password: "password123" });
+    const response = await request(app)
+      .post("/auth/register")
+      .send({ email, password: "password123" });
 
     expect(response.status).toBe(201);
     expect(response.body.email).toBe(email);
@@ -32,7 +35,9 @@ describe("auth flow", () => {
     const email = await uniqueEmail();
     await request(app).post("/auth/register").send({ email, password: "password123" });
 
-    const response = await request(app).post("/auth/register").send({ email, password: "password123" });
+    const response = await request(app)
+      .post("/auth/register")
+      .send({ email, password: "password123" });
 
     expect(response.status).toBe(409);
   });
@@ -41,7 +46,9 @@ describe("auth flow", () => {
     const email = await uniqueEmail();
     await request(app).post("/auth/register").send({ email, password: "password123" });
 
-    const response = await request(app).post("/auth/login").send({ email, password: "wrong-password" });
+    const response = await request(app)
+      .post("/auth/login")
+      .send({ email, password: "wrong-password" });
 
     expect(response.status).toBe(401);
   });
@@ -50,7 +57,9 @@ describe("auth flow", () => {
     const email = await uniqueEmail();
     await request(app).post("/auth/register").send({ email, password: "password123" });
 
-    const loginResponse = await request(app).post("/auth/login").send({ email, password: "password123" });
+    const loginResponse = await request(app)
+      .post("/auth/login")
+      .send({ email, password: "password123" });
 
     expect(loginResponse.status).toBe(200);
     const cookieHeader = loginResponse.headers["set-cookie"];
@@ -69,12 +78,39 @@ describe("auth flow", () => {
   it("logs out and clears the cookie", async () => {
     const email = await uniqueEmail();
     await request(app).post("/auth/register").send({ email, password: "password123" });
-    const loginResponse = await request(app).post("/auth/login").send({ email, password: "password123" });
+    const loginResponse = await request(app)
+      .post("/auth/login")
+      .send({ email, password: "password123" });
     const cookieHeader = loginResponse.headers["set-cookie"];
 
     const logoutResponse = await request(app).post("/auth/logout").set("Cookie", cookieHeader);
 
     expect(logoutResponse.status).toBe(200);
     expect(logoutResponse.headers["set-cookie"][0]).toMatch(/token=;/);
+  });
+});
+
+describe("database failures", () => {
+  it("returns 500 and keeps serving when the database rejects", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    const brokenApp = createApp({
+      query: () => Promise.reject(new Error("boom")),
+    } as unknown as Pool);
+
+    const body = { email: await uniqueEmail(), password: "password123" };
+    for (const path of ["/auth/register", "/auth/login"]) {
+      const response = await request(brokenApp).post(path).send(body);
+      expect(response.status, path).toBe(500);
+      expect(response.body, path).toEqual({ error: "internal" });
+    }
+
+    // The process (and app) must still answer requests after the failures.
+    const after = await request(brokenApp).post("/auth/logout");
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off("unhandledRejection", onUnhandled);
+    expect(after.status).toBe(200);
+    expect(unhandled).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import "../env.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import type { Pool } from "pg";
 import { createApp } from "../app.js";
 import { createPool } from "../db.js";
 
@@ -70,7 +71,10 @@ describe("POST /ingest", () => {
     await request(app).post("/auth/register").send({ email, password: "password123" });
     const login = await request(app).post("/auth/login").send({ email, password: "password123" });
     const cookie = [login.headers["set-cookie"]].flat() as string[];
-    const project = await request(app).post("/projects").set("Cookie", cookie).send({ name: "demo" });
+    const project = await request(app)
+      .post("/projects")
+      .set("Cookie", cookie)
+      .send({ name: "demo" });
     const keyResponse = await request(app)
       .post(`/projects/${project.body.id}/api-keys`)
       .set("Cookie", cookie);
@@ -105,5 +109,44 @@ describe("POST /ingest", () => {
     expect(response.status).toBe(422);
     const rows = await pool.query("SELECT count(*) FROM log_events");
     expect(Number(rows.rows[0].count)).toBe(0);
+  });
+});
+
+describe("database failures", () => {
+  it("returns 500 and keeps serving when the database rejects", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    const apiKey = await createProjectWithApiKey();
+
+    // Key lookup fails (apiKeyAuth middleware).
+    const authBroken = createApp({
+      query: () => Promise.reject(new Error("boom")),
+    } as unknown as Pool);
+    const first = await request(authBroken)
+      .post("/ingest")
+      .set("x-api-key", apiKey)
+      .send([sampleEvent()]);
+    expect(first.status).toBe(500);
+    expect(first.body).toEqual({ error: "internal" });
+
+    // Key lookup succeeds, the INSERT fails (route handler).
+    const insertBroken = createApp({
+      query: (sql: string, params?: unknown[]) =>
+        sql.startsWith("INSERT") ? Promise.reject(new Error("boom")) : pool.query(sql, params),
+    } as unknown as Pool);
+    const second = await request(insertBroken)
+      .post("/ingest")
+      .set("x-api-key", apiKey)
+      .send([sampleEvent()]);
+    expect(second.status).toBe(500);
+    expect(second.body).toEqual({ error: "internal" });
+
+    // The process (and app) must still answer requests after the failures.
+    const after = await request(insertBroken).post("/ingest");
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off("unhandledRejection", onUnhandled);
+    expect(after.status).toBe(401);
+    expect(unhandled).toEqual([]);
   });
 });
